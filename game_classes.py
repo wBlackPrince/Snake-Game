@@ -1,104 +1,62 @@
 from ursina import *
 from random import randint
 
-#? класс игрока
 class Snake(Entity):
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs,model = 'quad',color = color.green,scale = .5,collider = 'box')
-        #? список из частей тела 
+    def __init__(self):
+        snake = super().__init__(model = 'quad',scale = .4,color = color.green,collider = 'box')
+        #? компоненты змеи
         self.bodies = []
-        #? направление движения
-        self.flag = 'd'
-        #? размер змейки
-        self.size = 1
-        self.count = 1
-        #? поражение
+        #? направление движения змеи по осям x и y
+        self.delta = (.06,0)
+        #? длина змеи
+        self.length = 1
+        #? проигрыш
         self.game_over = False
 
-    #? ограничение роста змейки
-    def board(self):
-        if self.size == self.count:
-            destroy(self.bodies[0])
-            self.bodies.pop(0)
-        else:
-            self.count += 1
 
-    #? движение змеи
-    def move_d(self):
-        self.x += .05
-        self.bodies.append(Entity(model = 'quad',scale = .5,x= self.x,y = self.y,color = color.green,collider = 'box'))
-        self.board()
-
-    def move_a(self):
-        self.x -= .05
-        self.bodies.append(Entity(model = 'quad',scale = .5,x= self.x,y = self.y,color = color.green,collider = 'box'))
-        self.board()
+    def add_body(self):
+        if self.delta == (.06,0):
+            self.bodies.append(Entity(model = 'quad',scale = self.scale,color = color.green,collider = 'box',x = self.x - .06,y = self.y))
+        elif self.delta == (0,.06):
+            self.bodies.append(Entity(model = 'quad',scale = self.scale,color = color.green,collider = 'box',y = self.y - .06,x = self.x))
+        elif self.delta == (-.06,0):
+            self.bodies.append(Entity(model = 'quad',scale = self.scale,color = color.green,collider = 'box',x = self.x + .06,y = self.y))
+        elif self.delta == (0,-.06):
+            self.bodies.append(Entity(model = 'quad',scale = self.scale,color = color.green,collider = 'box',y = self.y + .06,x = self.x))
     
-    def move_w(self):
-        self.y += .05
-        self.bodies.append(Entity(model = 'quad',scale = .5,x= self.x,y = self.y,color = color.green,collider = 'box'))
-        self.board()
+    #? ограничитель размеров змеи
+    def bord_snake(self):
+        for i in range(len(self.bodies[:-self.length])):
+            destroy(self.bodies[i])
+        self.bodies = self.bodies[-self.length:]
 
-    def move_s(self):
-        self.y -= .05
-        self.bodies.append(Entity(model = 'quad',scale = .5,x= self.x,y = self.y,color = color.green,collider = 'box'))
-        self.board()
-
-
-    def input(self,key):
-        if key == 'd':
-            if self.flag == 'a':
-                self.game_over = True
-            self.flag = 'd'
-        
-        elif key == 'a':
-            if self.flag == 'd':
-                self.game_over = True
-            self.move_a()
-            self.flag = 'a'
-        
-        elif key == 'w':
-            if self.flag == 's':
-                self.game_over = True
-            self.move_w
-            self.flag = 'w'
-            
-        elif key == 's':
-            if self.flag == 'w':
-                self.game_over = True
-            self.move_s
-            self.flag = 's'
-    
     def update(self):
-        if self.flag == 'd':
-            self.move_d()
-        elif self.flag == 'a':
-            self.move_a()
-        elif self.flag == 'w':
-            self.move_w()
-        elif self.flag == 's':
-            self.move_s()
+        #? движение змеи
+        self.x += self.delta[0]
+        self.y += self.delta[1]
+        self.add_body()
+        self.bord_snake()
 
         #? проверка местоположения змеи
-        if abs(self.x) > 8 or 50 > abs(self.y) > 5:
+        if abs(self.x) > 8 or  abs(self.y) > 4.5:
             self.game_over = True
 
-class Apple(Entity):
-    count = 0
-    apples = []
-    def __init__(self):
-        super().__init__(model = 'quad',color = color.red,scale = .5,x = randint(-3,3),y = randint(-3,3),collider = 'box')
-        Apple.apples.append(self)
-        Apple.count += 1
+    def input(self,key):
+        if key == 'd' and self.delta != (-.06,0):
+            self.delta = (.06,0)
+        elif key == 'a' and self.delta != (.06,0):
+            self.delta = (-.06,0)
+        elif key == 'w' and self.delta != (0,-.06):
+            self.delta = (0,.06)
+        elif key == 's' and self.delta != (0,.06):
+            self.delta = (0,-.06)
+        elif key == 'a' or key == 'd' or key == 'w' or key == 's':
+            self.game_over = True
 
-    #? проверка на столкновение со змееей
-    def update(self):
-        hit_inf = self.intersects()
-        if hit_inf.hit and type(hit_inf.entity) == Snake:
-            destroy(self)
-            hit_inf.entity.size += 1
-            hit_inf.entity.count = 1
-            Apple.count -= 1
+
+class Apple(Entity):
+    def __init__(self):
+        super().__init__(model = 'quad',scale = .4,x = randint(-3,3),y = randint(-3,3),color = color.red,collider = 'box')
 
 class Inst_button(Button):
     def __init__(self):
